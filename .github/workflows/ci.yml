@@ -16,7 +16,8 @@ jobs:
         shell: pwsh
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/cache@v4
+      - uses: actions/cache/restore@v4
+        id: sdkcache
         with:
           path: |
             .deps/sdk
@@ -96,3 +97,13 @@ jobs:
           name: obs-smoke-logs
           path: artifacts/smoke-logs
           if-no-files-found: ignore
+      - name: Cache completed SDK even if a later plugin check failed
+        if: always() && steps.sdkcache.outputs.cache-hit != 'true' && hashFiles('.deps/sdk/.streamboard-sdk-33.0.1') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            .deps/sdk
+            .deps/prebuilt-2026-10-23
+            .deps/qt6-2026-10-23
+            .deps/*.zip
+          key: obs-sdk-33.0.1-x64-${{ hashFiles('buildspec.json', 'cmake/Dependencies.cmake') }}

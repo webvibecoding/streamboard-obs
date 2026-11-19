@@ -2,7 +2,7 @@
 #include "core/game.h"
 #include <QFile>
 #include <QJsonDocument>
-#include <QtTest>
+#include "test_support.h"
 
 class CoreTests : public QObject {
     Q_OBJECT

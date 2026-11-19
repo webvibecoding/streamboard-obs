@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "core/api.h"
 #include "core/tracker.h"
-#include <QSignalSpy>
 #include <QTimer>
-#include <QtTest>
+#include "test_support.h"
 
 struct Request { QByteArray method; QUrl url; sb::Headers headers; QJsonObject body; };
 class FakeTransport : public sb::Transport {

@@ -21,6 +21,7 @@ Editor::Editor(Api &a,Game g,QString platform,QWidget *parent) : QDialog(parent)
     form->addRow(text("GameName"),name); name->setEnabled(game.source == "exe");
     platforms = new QComboBox(this); platforms->addItem("Twitch","twitch"); platforms->addItem("VK Play Live","vkplaylive");
     if(!platform.isEmpty()) { platforms->setCurrentIndex(platforms->findData(platform)); platforms->setEnabled(false); }
+    platforms->setProperty("fixed",!platform.isEmpty());
     form->addRow(text("Platform"),platforms); layout->addLayout(form);
     auto *searchRow = new QHBoxLayout;
     query = new QLineEdit(game.name,this); query->setMaxLength(100); searchRow->addWidget(query);
@@ -33,7 +34,7 @@ Editor::Editor(Api &a,Game g,QString platform,QWidget *parent) : QDialog(parent)
     connect(buttons,&QDialogButtonBox::rejected,this,&Editor::reject);
     connect(searchButton,&QPushButton::clicked,this,&Editor::search);
     connect(query,&QLineEdit::returnPressed,this,&Editor::search);
-    connect(platforms,&QComboBox::currentIndexChanged,this,[this] { ++searchRevision; items->clear(); saveButton->setEnabled(false); });
+    connect(platforms,&QComboBox::currentIndexChanged,this,[this] { ++searchRevision; items->clear(); saveButton->setEnabled(false); searchButton->setEnabled(!saving); });
     connect(items,&QListWidget::currentRowChanged,this,[this](int row) { saveButton->setEnabled(row >= 0 && !saving); });
     connect(saveButton,&QPushButton::clicked,this,&Editor::save);
 }
@@ -66,13 +67,18 @@ void Editor::save() {
     QJsonObject selectedCategory{{"id",category["id"]},{"name",category["name"]},{"type",category["type"].toString("game")}};
     if(category["image_url"].isString()) selectedCategory.insert("image_url",category["image_url"]);
     saving = true; saveButton->setEnabled(false); searchButton->setEnabled(false); items->setEnabled(false); name->setEnabled(false);
+    platforms->setEnabled(false); query->setEnabled(false);
     message->setText(text("Saving")); const QPointer<Editor> guard(this);
     api.request("PUT","mappings",{{"game",selected.json()},{"platform_id",platforms->currentData().toString()},{"category",selectedCategory}},
         [guard,selected](Response response) {
             if(!guard) return;
             guard->saving = false;
+            const auto mappingGame = response.body["game"].toObject();
+            if(response.ok() && (mappingGame["key"] != selected.key || response.body["platform_id"] != guard->platforms->currentData().toString()
+                || response.body["category"].toObject()["id"].toString().isEmpty())) response.error = "invalid_server_response";
             if(!response.ok()) {
                 guard->saveButton->setEnabled(true); guard->searchButton->setEnabled(true); guard->items->setEnabled(true);
+                guard->platforms->setEnabled(!guard->platforms->property("fixed").toBool()); guard->query->setEnabled(true);
                 guard->name->setEnabled(guard->game.source == "exe"); guard->message->setText(errorText(response.error)); return;
             }
             emit guard->saved(selected,response.body); guard->accept();

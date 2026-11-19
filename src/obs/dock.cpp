@@ -141,7 +141,7 @@ bool Dock::nativeEventFilter(const QByteArray &,void *message,qintptr *) {
     return false;
 }
 void Dock::streamStarted() { if(tracker) tracker->accelerate(); }
-bool Dock::smokeCheck() const { return tabs && tabs->count() == 2 && mappings && mappings->columnCount() == 3 && results && results->rowCount() == 2 && api && !api->connected(); }
+bool Dock::smokeCheck() const { return !windowIcon().isNull() && tabs && tabs->count() == 2 && mappings && mappings->columnCount() == 3 && results && results->rowCount() == 2 && api && !api->connected(); }
 void Dock::updateConnection(bool connected) {
     ++sessionRevision;
     connectButton->setEnabled(!connected && !api->isPairing()); disconnectButton->setEnabled(connected || api->isPairing());

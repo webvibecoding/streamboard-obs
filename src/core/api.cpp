@@ -114,8 +114,9 @@ void Api::deliver(Job job,bool retried) {
 }
 void Api::finish(Job job,Response response) {
     busy = false;
+    const QPointer<Api> guard(this);
     job.reply(std::move(response));
-    QTimer::singleShot(0,this,[this] { pump(); });
+    if(guard) QTimer::singleShot(0,this,[this] { pump(); });
 }
 bool Api::saveToken(const QJsonObject &body) {
     const bool wasConnected = credential.has_value();
