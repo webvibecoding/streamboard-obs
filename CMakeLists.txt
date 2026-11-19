@@ -1,39 +1,37 @@
-cmake_minimum_required(VERSION 3.28...3.30)
-
-include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake" NO_POLICY_SCOPE)
-
-project(${_name} VERSION ${_version})
-
-option(ENABLE_FRONTEND_API "Use obs-frontend-api for UI functionality" OFF)
-option(ENABLE_QT "Use Qt functionality" OFF)
-
-include(compilerconfig)
-include(defaults)
-include(helpers)
-
-add_library(${CMAKE_PROJECT_NAME} MODULE)
-
+cmake_minimum_required(VERSION 3.28)
+project(streamboard-obs VERSION 1.0.0 LANGUAGES C CXX)
+if(NOT WIN32 OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
+  message(FATAL_ERROR "Streamboard OBS supports Windows x64 only")
+endif()
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+add_compile_definitions(UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN)
+add_compile_options(/W4 /utf-8 /permissive- /Zc:__cplusplus)
+include(cmake/Dependencies.cmake)
 find_package(libobs REQUIRED)
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::libobs)
-
-if(ENABLE_FRONTEND_API)
-  find_package(obs-frontend-api REQUIRED)
-  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::obs-frontend-api)
+find_package(obs-frontend-api REQUIRED)
+find_package(Qt6 REQUIRED COMPONENTS Core Widgets Network Concurrent Test)
+add_library(streamboard-core STATIC src/core/game.cpp src/core/api.cpp src/core/tracker.cpp)
+target_include_directories(streamboard-core PUBLIC src)
+target_link_libraries(streamboard-core PUBLIC Qt6::Core Qt6::Network)
+add_library(streamboard-windows STATIC src/windows/platform.cpp)
+target_link_libraries(streamboard-windows PUBLIC streamboard-core Qt6::Concurrent advapi32 version user32)
+configure_file(src/version.h.in generated/version.h @ONLY)
+configure_file(installer/version.rc.in generated/version.rc @ONLY)
+add_library(streamboard-obs MODULE src/obs/plugin.cpp src/obs/dock.cpp src/obs/editor.cpp
+  src/resources.qrc "${CMAKE_CURRENT_BINARY_DIR}/generated/version.rc")
+target_include_directories(streamboard-obs PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/generated")
+target_link_libraries(streamboard-obs PRIVATE streamboard-windows Qt6::Widgets OBS::libobs OBS::obs-frontend-api)
+set_target_properties(streamboard-obs PROPERTIES PREFIX "")
+install(TARGETS streamboard-obs RUNTIME DESTINATION streamboard-obs LIBRARY DESTINATION streamboard-obs)
+install(DIRECTORY data/ DESTINATION streamboard-obs/data)
+install(FILES LICENSE THIRD_PARTY_NOTICES.md PRIVACY.md DESTINATION streamboard-obs/data)
+include(CTest)
+if(BUILD_TESTING)
+  add_executable(streamboard-tests tests/core_tests.cpp tests/api_tests.cpp tests/main.cpp)
+  target_link_libraries(streamboard-tests PRIVATE streamboard-windows Qt6::Test)
+  target_compile_definitions(streamboard-tests PRIVATE SB_TEST_FIXTURES="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures")
+  add_test(NAME streamboard-tests COMMAND streamboard-tests)
 endif()
-
-if(ENABLE_QT)
-  find_package(Qt6 COMPONENTS Widgets Core)
-  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets)
-  target_compile_options(
-    ${CMAKE_PROJECT_NAME}
-    PRIVATE $<$<C_COMPILER_ID:Clang,AppleClang>:-Wno-quoted-include-in-framework-header -Wno-comma>
-  )
-  set_target_properties(
-    ${CMAKE_PROJECT_NAME}
-    PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON
-  )
-endif()
-
-target_sources(${CMAKE_PROJECT_NAME} PRIVATE src/plugin-main.c)
-
-set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})

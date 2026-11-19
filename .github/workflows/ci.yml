@@ -1,0 +1,98 @@
+name: Windows CI
+on:
+  push:
+    branches: [main, 'feat/**', 'feat-*', 'fix/**']
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-2025-vs2026
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .deps/sdk
+            .deps/prebuilt-2026-10-23
+            .deps/qt6-2026-10-23
+            .deps/*.zip
+          key: obs-sdk-33.0.1-x64-${{ hashFiles('buildspec.json', 'cmake/Dependencies.cmake') }}
+      - name: Configure pinned OBS SDK and plugin
+        run: cmake --preset windows-x64
+      - name: Build
+        run: cmake --build --preset windows-x64 --parallel 4
+      - name: Tests
+        run: |
+          $env:PATH = "$pwd/.deps/qt6-2026-10-23/bin;$pwd/.deps/sdk/bin/64bit;$env:PATH"
+          ctest --preset windows-x64
+          if ($LASTEXITCODE) { throw 'Tests failed' }
+      - name: Stage plugin and verify DLL version
+        run: |
+          cmake --install build_x64 --config Release --prefix artifacts/package/plugins
+          if ($LASTEXITCODE) { throw 'Installation staging failed' }
+          $version = (Get-Content buildspec.json -Raw | ConvertFrom-Json).version
+          $dll = Get-Item artifacts/package/plugins/streamboard-obs/streamboard-obs.dll
+          if ($dll.VersionInfo.FileVersion -ne "$version.0") { throw 'DLL version mismatch' }
+          if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$version") { throw 'Tag version mismatch' }
+      - name: Portable OBS startup and shutdown smoke
+        run: ./tools/Test-ObsSmoke.ps1
+      - name: Signing hook
+        if: vars.WINDOWS_SIGNING_ENABLED == 'true' && github.ref_type == 'tag'
+        env:
+          SIGNING_PFX: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
+          SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
+        run: ./tools/Sign-Windows.ps1 -Path artifacts/package/plugins/streamboard-obs/streamboard-obs.dll
+      - name: Package ZIP and installer
+        run: |
+          $version = (Get-Content buildspec.json -Raw | ConvertFrom-Json).version
+          Compress-Archive -Path artifacts/package/plugins -DestinationPath "artifacts/Streamboard.OBS-$version-win-x64.zip"
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path -LiteralPath $iscc)) { throw 'Inno Setup 6 not found' }
+          & $iscc "/DAppVersion=$version" installer/Streamboard.OBS.iss
+          if ($LASTEXITCODE) { throw 'Installer build failed' }
+      - name: Installer signing hook
+        if: vars.WINDOWS_SIGNING_ENABLED == 'true' && github.ref_type == 'tag'
+        env:
+          SIGNING_PFX: ${{ secrets.WINDOWS_SIGNING_PFX_BASE64 }}
+          SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_PFX_PASSWORD }}
+        run: |
+          $version = (Get-Content buildspec.json -Raw | ConvertFrom-Json).version
+          ./tools/Sign-Windows.ps1 -Path "artifacts/Streamboard.OBS-Setup-$version.exe"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Generate SBOM and checksums
+        run: |
+          $version = (Get-Content buildspec.json -Raw | ConvertFrom-Json).version
+          dotnet tool install --global Microsoft.Sbom.DotNetTool
+          if ($LASTEXITCODE) { throw 'SBOM tool installation failed' }
+          sbom-tool generate -b artifacts/package -bc . -pn Streamboard.OBS -pv $version -ps Webvibecoding -nsb https://github.com/webvibecoding/streamboard-obs
+          if ($LASTEXITCODE) { throw 'SBOM generation failed' }
+          Copy-Item artifacts/package/_manifest/spdx_2.2/manifest.spdx.json "artifacts/Streamboard.OBS-$version-sbom.spdx.json"
+          $files = Get-ChildItem artifacts -File | Where-Object { $_.Name -match '\.(exe|zip|json)$' } | Sort-Object Name
+          $lines = @($files | ForEach-Object { "$((Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant())  $($_.Name)" })
+          [IO.File]::WriteAllLines("$pwd/artifacts/SHA256SUMS.txt", $lines, [Text.UTF8Encoding]::new($false))
+      - name: Upload release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: streamboard-obs-windows
+          path: |
+            artifacts/*.exe
+            artifacts/*.zip
+            artifacts/*.json
+            artifacts/SHA256SUMS.txt
+          if-no-files-found: error
+      - name: Upload smoke logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: obs-smoke-logs
+          path: artifacts/smoke-logs
+          if-no-files-found: ignore

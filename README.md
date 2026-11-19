@@ -1,59 +1,107 @@
-# OBS Plugin Template
+# Streamboard OBS
 
-## Introduction
+Native OBS Studio plugin for automatic Twitch and VK Play Live category updates
+through [Streamboard](https://streamboard.sip1ay.pro).
 
-The plugin template is meant to be used as a starting point for OBS Studio plugin development. It includes:
+**Supported:** Windows 11 x64, OBS Studio **33.0.1**. Other OBS 33.x builds are
+allowed to load but have not been validated. macOS, Linux and ARM64 are outside
+this release. Streamboard Companion remains available as a separate application.
 
-* Boilerplate plugin source code
-* A CMake project file
-* GitHub Actions workflows and repository actions
+## Установка
 
-## Supported Build Environments
+Скачайте файлы из [GitHub Releases](https://github.com/webvibecoding/streamboard-obs/releases/latest).
 
-| Platform  | Tool   |
-|-----------|--------|
-| Windows   | Visual Studio 17 2022 |
-| macOS     | XCode 16.0 |
-| Windows, macOS  | CMake 3.30.5 |
-| Ubuntu 24.04 | CMake 3.28.3 |
-| Ubuntu 24.04 | `ninja-build` |
-| Ubuntu 24.04 | `pkg-config`
-| Ubuntu 24.04 | `build-essential` |
+- `Streamboard.OBS-Setup-1.0.0.exe`: закройте OBS и запустите установщик.
+  Стандартный каталог: `C:\ProgramData\obs-studio\plugins\streamboard-obs`.
+- `Streamboard.OBS-1.0.0-win-x64.zip`: для portable OBS распакуйте в корень
+  portable-копии. Должен получиться файл
+  `OBS\plugins\streamboard-obs\streamboard-obs.dll` и каталог `data` рядом.
+  Для обычного OBS ZIP можно распаковать в `C:\ProgramData\obs-studio`.
 
-## Quick Start
+Это пакет плагина; установленный OBS уже должен присутствовать. Qt и libobs
+берутся из OBS. При обновлении закройте OBS, замените файлы плагина и запустите
+его снова. Удаление через «Установленные приложения» удаляет только плагин.
+Portable-пакет удаляется вместе с папкой `plugins\streamboard-obs`.
 
-An absolute bare-bones [Quick Start Guide](https://github.com/obsproject/obs-plugintemplate/wiki/Quick-Start-Guide) is available in the wiki.
+Бинарные файлы пока не подписаны сертификатом. Windows SmartScreen может показать
+предупреждение о неизвестном издателе. Сверьте загрузку с `SHA256SUMS.txt`:
 
-## Documentation
+```powershell
+Get-FileHash .\Streamboard.OBS-Setup-1.0.0.exe -Algorithm SHA256
+```
 
-All documentation can be found in the [Plugin Template Wiki](https://github.com/obsproject/obs-plugintemplate/wiki).
+## Подключение
 
-Suggested reading to get up and running:
+1. Откройте панель **Streamboard** через меню **Док-панели / Docks** в OBS.
+2. Нажмите **Подключить Streamboard**.
+3. В открывшемся браузере войдите в свой аккаунт и подтвердите код устройства.
+4. Вернитесь в OBS. Плагин появится в Streamboard как отдельное устройство OBS.
 
-* [Getting started](https://github.com/obsproject/obs-plugintemplate/wiki/Getting-Started)
-* [Build system requirements](https://github.com/obsproject/obs-plugintemplate/wiki/Build-System-Requirements)
-* [Build system options](https://github.com/obsproject/obs-plugintemplate/wiki/CMake-Build-System-Options)
+Сопоставления категорий общие с Companion в том же аккаунте. Плагин использует
+собственную сессию и запись Windows Credential Manager. Выберите один клиент
+для автоматической синхронизации на компьютере: закройте Companion при переходе
+на плагин. Одновременно активен один экземпляр плагина на пользователя.
 
-## GitHub Actions & CI
+## Использование
 
-Default GitHub Actions workflows are available for the following repository actions:
+Пока OBS открыт, плагин каждые 2 секунды проверяет активное окно. Steam и Epic
+определяются по локальным манифестам, остальные игры — по EXE или ручному имени.
+После 10 секунд стабильного фокуса выполняется синхронизация. Пока игра активна,
+эфиры повторно проверяются каждые 30 секунд. Запуск эфира в OBS ускоряет проверку
+уже подтверждённой игры. Состояние эфира каждой платформы определяет сервер,
+включая мультистрим через дополнительные выходы OBS.
 
-* `push`: Run for commits or tags pushed to `master` or `main` branches.
-* `pr-pull`: Run when a Pull Request has been pushed or synchronized.
-* `dispatch`: Run when triggered by the workflow dispatch in GitHub's user interface.
-* `build-project`: Builds the actual project and is triggered by other workflows.
-* `check-format`: Checks CMake and plugin source code formatting and is triggered by other workflows.
+При закрытии игры, фокусе на обычном приложении или паузе категория сохраняется.
+Плагин меняет только категорию на подключённых платформах, где уже идёт эфир.
+Заголовки, теги и остальные настройки не изменяются. Kick, Trovo и YouTube не
+получают запросов обновления категории.
 
-The workflows make use of GitHub repository actions (contained in `.github/actions`) and build scripts (contained in `.github/scripts`) which are not needed for local development, but might need to be adjusted if additional/different steps are required to build the plugin.
+На вкладке **Сохранённые сопоставления** нажмите ячейку Twitch или VK, найдите
+категорию и сохраните. Игру для этого запускать не требуется. Изменение вступит
+в силу при следующей штатной синхронизации активной игры и живого эфира.
+Для неизвестного EXE укажите название через **Выбрать категорию**.
 
-### Retrieving build artifacts
+Проверка обновлений выполняется не чаще раза в сутки и по кнопке. Плагин открывает
+страницу релиза; установка обновления выполняется пользователем после закрытия OBS.
 
-Successful builds on GitHub Actions will produce build artifacts that can be downloaded for testing. These artifacts are commonly simple archives and will not contain package installers or installation programs.
+## Privacy and security
 
-### Building a Release
+Only a storefront/hash game key, game name and executable basename are sent to
+Streamboard. Window titles and full executable paths are never collected for
+upload. Platform OAuth tokens remain on the server. See [PRIVACY.md](PRIVACY.md)
+and [SECURITY.md](SECURITY.md).
 
-To create a release, an appropriately named tag needs to be pushed to the `main`/`master` branch using semantic versioning (e.g., `12.3.4`, `23.4.5-beta2`). A draft release will be created on the associated repository with generated installer packages or installation programs attached as release artifacts.
+## Build
 
-## Signing and Notarizing on macOS
+Use Visual Studio 2026 C++ tools, Windows SDK 10.0.26100.0 and CMake 3.28+ with
+the Visual Studio 18 generator. CMake verifies pinned SHA256 hashes for official
+OBS 33.0.1 sources and obs-deps/Qt 2026-10-23, then builds the public OBS SDK.
+No additional Qt DLLs are distributed with this plugin.
 
-Basic concepts of codesigning and notarization on macOS are explained in the correspodning [Wiki article](https://github.com/obsproject/obs-plugintemplate/wiki/Codesigning-On-macOS) which has a specific section for the [GitHub Actions setup](https://github.com/obsproject/obs-plugintemplate/wiki/Codesigning-On-macOS#setting-up-code-signing-for-github-actions).
+```powershell
+cmake --preset windows-x64
+cmake --build --preset windows-x64 --parallel 4
+$env:PATH = "$pwd/.deps/qt6-2026-10-23/bin;$pwd/.deps/sdk/bin/64bit;$env:PATH"
+ctest --preset windows-x64
+cmake --install build_x64 --config Release --prefix artifacts/package/plugins
+```
+
+Windows CI additionally opens an isolated portable OBS, verifies that the dock
+loaded, and requests graceful shutdown. The smoke script refuses to run outside
+GitHub Actions. Automated tests use mock HTTP and credential storage. They do not
+need a Streamboard account or live streams.
+
+Manual Windows 11 checks with real Twitch/VK streams, installer/uninstaller and
+in-game overlays are **deferred**. CI does not establish real live-stream behavior
+on an end-user Windows 11 machine. See [manual checklist](docs/MANUAL_TESTS.md).
+
+Tag `v1.0.0` runs the complete pipeline and creates a draft release containing
+installer, ZIP, SHA256 checksums and SPDX SBOM. Publish the draft after reviewing
+the CI and release asset checksums. Signing hooks are disabled unless the
+`WINDOWS_SIGNING_ENABLED` repository variable and signing secrets are configured.
+
+## License
+
+GPL-2.0-or-later; see [LICENSE](LICENSE). The Companion algorithms and SB artwork
+are reused under MIT with their original notice retained in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

@@ -1,0 +1,64 @@
+[
+  {
+    "source": "exe",
+    "input": "C:\\Games\\Private Folder\\game.exe",
+    "expected": "exe:f26652c477f7d0fa409ce7a5eeb7046674d815ede4d10d50e3e9492e5d615a6a"
+  },
+  {
+    "source": "exe",
+    "input": "c:/games/private folder/game.exe",
+    "expected": "exe:f26652c477f7d0fa409ce7a5eeb7046674d815ede4d10d50e3e9492e5d615a6a"
+  },
+  {
+    "source": "exe",
+    "input": "  D:\\SteamLibrary\\game.exe\\  ",
+    "expected": "exe:5e6de8c992750fc5e66652bcc3aa2b60bc513547851580c66dea0fc538dee7cc"
+  },
+  {
+    "source": "exe",
+    "input": "\\\\NAS\\Games\\Игра\\game.exe",
+    "expected": "exe:4b7af70485e11f94f2b01e66908508363ed7a7458522ceb6bec35cc17b96cf9e"
+  },
+  {
+    "source": "exe",
+    "input": "C:\\Игры\\ЁЖ\\Game.EXE",
+    "expected": "exe:b70b8a542a0424903cd8100565b36cd16b059a354757b6759b258b92e63a0c04"
+  },
+  {
+    "source": "exe",
+    "input": "MYSTERY.EXE",
+    "expected": "exe:4b74421c9d92763ec48da53988bbdb5ed559fded7c83b6cacdead84c55be16f5"
+  },
+  {
+    "source": "exe",
+    "input": "folder\\Game.exe",
+    "expected": "exe:34df7c50d648a2c997a656842aa10237a54870b47cf4a621cf58221d8f696e28"
+  },
+  {
+    "source": "exe",
+    "input": "C:\\Games\\Space & #100%\\game.exe",
+    "expected": "exe:86f81ad180991c568fb8d21f7f527c39b414e7f5bcb32f3e8d4d4f098262a066"
+  },
+  {
+    "source": "steam",
+    "input": "730",
+    "expected": "steam:730"
+  },
+  {
+    "source": "steam",
+    "input": "app 73x0",
+    "expected": "steam:730"
+  },
+  {
+    "namespace": "Name Space",
+    "source": "epic",
+    "expected": "epic:name%20space:item%3A%2F%3F%23%25",
+    "item": "Item:/?#%"
+  },
+  {
+    "namespace": "Пространство",
+    "source": "epic",
+    "expected": "epic:%D0%BF%D1%80%D0%BE%D1%81%D1%82%D1%80%D0%B0%D0%BD%D1%81%D1%82%D0%B2%D0%BE:%D0%B8%D0%B3%D1%80%D0%B0",
+    "item": "ИГРА"
+  }
+]
