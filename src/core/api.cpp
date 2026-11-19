@@ -136,8 +136,9 @@ void Api::pair(const QString &deviceName) {
         {"platform","windows"},{"app_version",version}},{},[this,generation](Response r) {
         if(generation != pairingGeneration) return;
         if(!r.ok()) { endPairing(r.error); return; }
-        const auto url = QUrl(r.body["verification_uri_complete"].toString(r.body["verification_uri"].toString()));
-        if(!trustedPairingUrl(url) || r.body["device_code"].toString().isEmpty()) { endPairing("invalid_pairing_response"); return; }
+        // value() does not insert an absent optional field or invalidate a QJsonValueRef.
+        const auto url = QUrl(r.body.value("verification_uri_complete").toString(r.body.value("verification_uri").toString()));
+        if(!trustedPairingUrl(url) || r.body.value("device_code").toString().isEmpty()) { endPairing("invalid_pairing_response"); return; }
         deviceCode = r.body["device_code"].toString(); pollInterval = qBound(1,r.body["interval"].toInt(5),30);
         pairingDeadline = QDateTime::currentDateTimeUtc().addSecs(qBound(1,r.body["expires_in"].toInt(600),600));
         emit pairingStarted(r.body["user_code"].toString(),url);

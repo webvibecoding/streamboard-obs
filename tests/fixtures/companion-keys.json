@@ -60,5 +60,16 @@
     "source": "epic",
     "expected": "epic:%D0%BF%D1%80%D0%BE%D1%81%D1%82%D1%80%D0%B0%D0%BD%D1%81%D1%82%D0%B2%D0%BE:%D0%B8%D0%B3%D1%80%D0%B0",
     "item": "ИГРА"
+  },
+  {
+    "input": "C:\\Games\\İstanbul\\ΣΟΣ\\ẞΩK\\𐐀\\GAME.EXE",
+    "source": "exe",
+    "expected": "exe:9e4c640e4c5baea3342f1bbd260ed2a0aa07ce1c25d9a2b6cac9c65e2a1ffeea"
+  },
+  {
+    "expected": "epic:%C4%B0stanbul:%CF%83%CE%BF%CF%83%20%F0%90%90%A8",
+    "source": "epic",
+    "namespace": "İstanbul",
+    "item": "ΣΟΣ 𐐀"
   }
 ]

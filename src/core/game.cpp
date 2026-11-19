@@ -9,6 +9,13 @@
 #include <algorithm>
 
 namespace sb {
+// QString's full case mapping expands U+0130; .NET invariant casing preserves it.
+// Use scalar/simple mappings and the invariant Turkish-I exception for key parity.
+static QString invariantLower(const QString &value) {
+    auto scalars = value.toUcs4();
+    for(auto &scalar : scalars) if(scalar != 0x0130) scalar = QChar::toLower(scalar);
+    return QString::fromUcs4(scalars.constData(),scalars.size());
+}
 QJsonObject Game::json() const {
     return {{"key",key},{"source",source},{"display_name",name},{"executable_name",executable}};
 }
@@ -20,13 +27,13 @@ QString steamKey(QString appId) {
     return appId.isEmpty() ? QString() : "steam:" + appId;
 }
 QString epicKey(QString nameSpace, QString item) {
-    auto part = [](const QString &s) { return QString::fromLatin1(QUrl::toPercentEncoding(s.trimmed().toLower())); };
+    auto part = [](const QString &s) { return QString::fromLatin1(QUrl::toPercentEncoding(invariantLower(s.trimmed()))); };
     return nameSpace.trimmed().isEmpty() || item.trimmed().isEmpty() ? QString() : "epic:" + part(nameSpace) + ":" + part(item);
 }
 QString normalizedPath(QString path) {
     path.replace('\\','/');
     while (path.endsWith('/')) path.chop(1);
-    return path.toLower();
+    return invariantLower(path);
 }
 QString executableKey(QString identity) {
     identity = identity.trimmed();
@@ -88,8 +95,8 @@ std::optional<CatalogEntry> epicManifest(const QByteArray &json) {
 }
 std::optional<Game> resolveGame(const Process &p, QVector<CatalogEntry> catalog, const QHash<QString,QString> &manual) {
     QString exe = p.name;
-    exe.replace('\\','/'); exe = exe.section('/',-1).trimmed().toLower();
-    if(exe.isEmpty()) { auto path = p.path; path.replace('\\','/'); exe = path.section('/',-1).toLower(); }
+    exe.replace('\\','/'); exe = invariantLower(exe.section('/',-1).trimmed());
+    if(exe.isEmpty()) { auto path = p.path; path.replace('\\','/'); exe = invariantLower(path.section('/',-1)); }
     if(exe.isEmpty()) return {};
     if(!exe.endsWith(".exe")) exe += ".exe";
     if(excludedExecutable(exe)) return {};
