@@ -1,6 +1,29 @@
 # Runs only on a disposable CI runner. Never start the user's OBS to test a plugin.
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true') { throw 'OBS smoke is restricted to GitHub Actions' }
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+using System.Text;
+public static class ObsSmokeWindow {
+    private delegate bool EnumerateWindow(IntPtr window, IntPtr parameter);
+    [DllImport("user32.dll")] private static extern bool EnumWindows(EnumerateWindow callback, IntPtr parameter);
+    [DllImport("user32.dll")] private static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
+    [DllImport("user32.dll", CharSet = CharSet.Unicode)] private static extern int GetWindowText(IntPtr window, StringBuilder value, int length);
+    [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr window, uint message, IntPtr wparam, IntPtr lparam);
+    public static bool Close(int processId) {
+        IntPtr main = IntPtr.Zero;
+        EnumWindows((window, parameter) => {
+            uint owner; GetWindowThreadProcessId(window, out owner);
+            if (owner != processId) return true;
+            var title = new StringBuilder(1024); GetWindowText(window, title, title.Capacity);
+            if (!title.ToString().StartsWith("OBS ", StringComparison.Ordinal)) return true;
+            main = window; return false;
+        }, IntPtr.Zero);
+        return main != IntPtr.Zero && PostMessage(main, 0x0010, IntPtr.Zero, IntPtr.Zero);
+    }
+}
+'@
 $root = Join-Path $env:RUNNER_TEMP "streamboard-obs-smoke-$([Guid]::NewGuid())"
 New-Item -ItemType Directory -Path $root -Force | Out-Null
 $archive = Join-Path $root 'obs.zip'
@@ -39,7 +62,8 @@ try {
     } while ([DateTime]::UtcNow -lt $deadline)
     if (!$passed) { throw 'OBS dock smoke timed out' }
     $process.Refresh()
-    if (!$process.CloseMainWindow()) { throw 'Could not request graceful OBS shutdown' }
+    # Process.CloseMainWindow ignores hidden windows; WM_CLOSE uses the normal Qt close lifecycle.
+    if (![ObsSmokeWindow]::Close($process.Id)) { throw 'Could not request graceful OBS shutdown' }
     if (!$process.WaitForExit(30000)) { throw 'OBS did not exit cleanly' }
     if ($process.ExitCode -ne 0) { throw "OBS exited with $($process.ExitCode)" }
     $content = ($logs | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join "`n"
