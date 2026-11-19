@@ -12,8 +12,8 @@ namespace sb {
 // QString's full case mapping expands U+0130; .NET invariant casing preserves it.
 // Use scalar/simple mappings and the invariant Turkish-I exception for key parity.
 static QString invariantLower(const QString &value) {
-    auto scalars = value.toUcs4();
-    for(auto &scalar : scalars) if(scalar != 0x0130) scalar = QChar::toLower(scalar);
+    QList<char32_t> scalars;
+    for(const char32_t scalar : value.toUcs4()) scalars.append(scalar == 0x0130 ? scalar : QChar::toLower(scalar));
     return QString::fromUcs4(scalars.constData(),scalars.size());
 }
 QJsonObject Game::json() const {
