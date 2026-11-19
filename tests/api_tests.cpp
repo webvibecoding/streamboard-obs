@@ -2,6 +2,8 @@
 #include "core/api.h"
 #include "core/tracker.h"
 #include <QTimer>
+#include <QTcpServer>
+#include <QTcpSocket>
 #include "test_support.h"
 
 struct Request { QByteArray method; QUrl url; sb::Headers headers; QJsonObject body; };
@@ -117,6 +119,41 @@ private slots:
     void unsafeErrorBodyIsNeverReflected() {
         QCOMPARE(sb::safeError(500,{{"detail",QJsonObject{{"code","secret token C:/Private/path"}}}}),"http_500");
         QCOMPARE(sb::safeError(429,{{"detail",QJsonObject{{"code","desktop_rate_limited"}}}}),"desktop_rate_limited");
+    }
+    void networkTransportHonors429AndNeverReflectsBody() {
+        QTcpServer server; QVERIFY(server.listen(QHostAddress::LocalHost));
+        connect(&server,&QTcpServer::newConnection,&server,[&] {
+            auto *socket = server.nextPendingConnection();
+            connect(socket,&QTcpSocket::readyRead,socket,[socket] {
+                socket->readAll();
+                const QByteArray body = R"({"detail":{"code":"desktop_rate_limited","message":"private-token"}})";
+                socket->write("HTTP/1.1 429 Too Many Requests\r\nContent-Type: application/json\r\nRetry-After: 17\r\nConnection: close\r\nContent-Length: " + QByteArray::number(body.size()) + "\r\n\r\n" + body);
+                socket->disconnectFromHost();
+            });
+            connect(socket,&QTcpSocket::disconnected,socket,&QObject::deleteLater);
+        });
+        sb::NetworkTransport transport; bool completed = false;
+        transport.send("GET",QUrl(QString("http://127.0.0.1:%1/test").arg(server.serverPort())),{}, {},[&](auto r) {
+            QCOMPARE(r.status,429); QCOMPARE(r.retryAfter,17); QCOMPARE(r.error,"desktop_rate_limited"); completed = true;
+        });
+        QTRY_VERIFY(completed);
+    }
+    void networkTransportDoesNotFollowRedirectsOrSendCookies() {
+        QTcpServer server; QVERIFY(server.listen(QHostAddress::LocalHost)); int count = 0; QByteArray observed;
+        connect(&server,&QTcpServer::newConnection,&server,[&] {
+            auto *socket = server.nextPendingConnection();
+            connect(socket,&QTcpSocket::readyRead,socket,[&,socket] {
+                observed += socket->readAll(); ++count;
+                socket->write("HTTP/1.1 302 Found\r\nLocation: https://evil.invalid/token\r\nSet-Cookie: session=private\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}"); socket->disconnectFromHost();
+            });
+            connect(socket,&QTcpSocket::disconnected,socket,&QObject::deleteLater);
+        });
+        sb::NetworkTransport transport; int completed = 0;
+        const QUrl url(QString("http://127.0.0.1:%1/test").arg(server.serverPort()));
+        transport.send("GET",url,{}, {},[&](auto r) { QCOMPARE(r.status,302); ++completed; });
+        QTRY_COMPARE(completed,1);
+        transport.send("GET",url,{}, {},[&](auto r) { QCOMPARE(r.status,302); ++completed; });
+        QTRY_COMPARE(completed,2); QCOMPARE(count,2); QVERIFY(!observed.toLower().contains("cookie:"));
     }
     void trackerRetryKeepsEventAndDiscardsAfterFocusLoss() {
         FakeTransport transport; MemoryStore store; store.seed(); int attempts = 0;

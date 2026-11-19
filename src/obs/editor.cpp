@@ -18,7 +18,7 @@ Editor::Editor(Api &a,Game g,QString platform,QWidget *parent) : QDialog(parent)
     auto *gameLabel = new QLabel(game.name,this); gameLabel->setTextFormat(Qt::PlainText); gameLabel->setWordWrap(true); layout->addWidget(gameLabel);
     auto *form = new QFormLayout;
     name = new QLineEdit(game.name,this); name->setMaxLength(140);
-    form->addRow(text("GameName"),name); name->setEnabled(game.source == "exe");
+    form->addRow(text("GameName"),name); name->setEnabled(game.needsName);
     platforms = new QComboBox(this); platforms->addItem("Twitch","twitch"); platforms->addItem("VK Play Live","vkplaylive");
     if(!platform.isEmpty()) { platforms->setCurrentIndex(platforms->findData(platform)); platforms->setEnabled(false); }
     platforms->setProperty("fixed",!platform.isEmpty());
@@ -79,7 +79,7 @@ void Editor::save() {
             if(!response.ok()) {
                 guard->saveButton->setEnabled(true); guard->searchButton->setEnabled(true); guard->items->setEnabled(true);
                 guard->platforms->setEnabled(!guard->platforms->property("fixed").toBool()); guard->query->setEnabled(true);
-                guard->name->setEnabled(guard->game.source == "exe"); guard->message->setText(errorText(response.error)); return;
+                guard->name->setEnabled(guard->game.needsName); guard->message->setText(errorText(response.error)); return;
             }
             emit guard->saved(selected,response.body); guard->accept();
         });

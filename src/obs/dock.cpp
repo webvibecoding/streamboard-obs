@@ -70,6 +70,7 @@ Dock::Dock(QString directory,QWidget *parent) : QWidget(parent),settings(QDir(di
     });
     connect(disconnectButton,&QPushButton::clicked,this,[this] {
         tracker->reset(); tracker->setPaused(true); disconnectButton->setEnabled(false);
+        pauseButton->setText(text("Resume"));
         api->disconnectDevice([this](Response r) { if(!r.ok() && r.error != "desktop_pairing_required") connection->setText(text("Disconnected") + " · " + errorText(r.error)); });
     });
     connect(api.get(),&Api::pairingStarted,this,[this](const QString &code,const QUrl &url) {
@@ -147,7 +148,10 @@ void Dock::updateConnection(bool connected) {
     connectButton->setEnabled(!connected && !api->isPairing()); disconnectButton->setEnabled(connected || api->isPairing());
     connection->setText(text(connected ? "Connected" : "Disconnected"));
     editButton->setEnabled(connected && tracker->currentGame().has_value());
-    if(connected) { bootstrap(); loadMappings(); }
+    if(connected) {
+        tracker->setPaused(settings.value("paused",false).toBool()); pauseButton->setText(text(tracker->paused() ? "Resume" : "Pause"));
+        bootstrap(); loadMappings();
+    }
     else {
         savedMappings = {}; rows.clear(); renderMappings(); mappingMessage->setText(text("ConnectRequired"));
         for(int row = 0; row < 2; ++row) { results->item(row,1)->setText(text("UnknownStatus")); results->item(row,2)->setText(text("NotSelected")); }

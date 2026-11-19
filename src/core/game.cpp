@@ -78,6 +78,8 @@ std::optional<CatalogEntry> epicManifest(const QByteArray &json) {
     const auto v = QJsonDocument::fromJson(json).object();
     auto ns = v.value("CatalogNamespace").toString(v.value("Namespace").toString()).trimmed();
     auto item = v.value("CatalogItemId").toString(v.value("ItemId").toString()).trimmed();
+    if(ns.isEmpty()) ns = v.value("Namespace").toString().trimmed();
+    if(item.isEmpty()) item = v.value("ItemId").toString().trimmed();
     auto name = v.value("DisplayName").toString().trimmed(), dir = v.value("InstallLocation").toString().trimmed();
     auto launch = v.value("LaunchExecutable").toString().trimmed();
     if(ns.isEmpty() || item.isEmpty() || name.isEmpty() || dir.isEmpty()) return {};

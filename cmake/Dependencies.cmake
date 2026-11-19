@@ -49,6 +49,7 @@ if(NOT EXISTS "${sdk}/.streamboard-sdk-33.0.1")
   execute_process(COMMAND "${CMAKE_COMMAND}" -S "${obs_source}" -B "${deps}/obs-build"
     -G "${CMAKE_GENERATOR}" -A "x64,version=10.0.26100.0"
     "-DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}" -DENABLE_CORE_MODULES=OFF -DENABLE_FRONTEND=OFF
+    -DCMAKE_COMPILE_WARNING_AS_ERROR=OFF
     -DENABLE_BROWSER=OFF -DENABLE_SCRIPTING=OFF -DOBS_VERSION_OVERRIDE=33.0.1
     COMMAND_ERROR_IS_FATAL ANY)
   execute_process(COMMAND "${CMAKE_COMMAND}" --build "${deps}/obs-build" --config Release
