@@ -73,8 +73,9 @@ and [SECURITY.md](SECURITY.md).
 
 ## Build
 
-Use Visual Studio 2026 C++ tools, Windows SDK 10.0.26100.0 and CMake 3.28+ with
-the Visual Studio 18 generator. CMake verifies pinned SHA256 hashes for official
+Use Visual Studio 2026 C++ tools, Windows SDK 10.0.26100.0 and CMake 4.2+ with
+the [Visual Studio 18 generator](https://cmake.org/cmake/help/latest/generator/Visual%20Studio%2018%202026.html).
+CMake verifies pinned SHA256 hashes for official
 OBS 33.0.1 sources and obs-deps/Qt 2026-10-23, then builds the public OBS SDK.
 No additional Qt DLLs are distributed with this plugin.
 
