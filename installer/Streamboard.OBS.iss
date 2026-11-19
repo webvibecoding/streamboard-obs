@@ -34,12 +34,13 @@ Source: "..\artifacts\package\plugins\streamboard-obs\streamboard-obs.dll"; Dest
 Source: "..\artifacts\package\plugins\streamboard-obs\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
 [Code]
 function NextButtonClick(CurPageID: Integer): Boolean;
-var Services, Processes: Variant;
+var Locator, Services, Processes: Variant;
 begin
   Result := True;
   if CurPageID <> wpReady then Exit;
   try
-    Services := GetObject('winmgmts:\\.\root\CIMV2');
+    Locator := CreateOleObject('WbemScripting.SWbemLocator');
+    Services := Locator.ConnectServer('', 'root\CIMV2');
     Processes := Services.ExecQuery('SELECT Name FROM Win32_Process WHERE Name = "obs64.exe" OR Name = "obs.exe"');
     if Processes.Count > 0 then begin
       MsgBox('Close OBS Studio before installing Streamboard OBS / Закройте OBS Studio перед установкой.', mbInformation, MB_OK);

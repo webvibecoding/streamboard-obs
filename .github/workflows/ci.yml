@@ -32,7 +32,8 @@ jobs:
       - name: Tests
         run: |
           $env:PATH = "$pwd/.deps/qt6-2026-10-23/bin;$pwd/.deps/sdk/bin/64bit;$env:PATH"
-          ctest --preset windows-x64
+          $env:QT_FORCE_STDERR_LOGGING = '1'
+          ctest --preset windows-x64 --verbose
           if ($LASTEXITCODE) { throw 'Tests failed' }
       - name: Stage plugin and verify DLL version
         run: |
@@ -96,6 +97,13 @@ jobs:
         with:
           name: obs-smoke-logs
           path: artifacts/smoke-logs
+          if-no-files-found: ignore
+      - name: Upload test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-diagnostics
+          path: build_x64/Testing/Temporary
           if-no-files-found: ignore
       - name: Cache completed SDK even if a later plugin check failed
         if: always() && steps.sdkcache.outputs.cache-hit != 'true' && hashFiles('.deps/sdk/.streamboard-sdk-33.0.1') != ''
