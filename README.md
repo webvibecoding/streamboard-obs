@@ -11,9 +11,9 @@ this release. Streamboard Companion remains available as a separate application.
 
 Скачайте файлы из [GitHub Releases](https://github.com/webvibecoding/streamboard-obs/releases/latest).
 
-- `Streamboard.OBS-Setup-1.0.0.exe`: закройте OBS и запустите установщик.
+- `Streamboard.OBS-Setup-1.0.1.exe`: закройте OBS и запустите установщик.
   Стандартный каталог: `C:\ProgramData\obs-studio\plugins\streamboard-obs`.
-- `Streamboard.OBS-1.0.0-win-x64.zip`: для portable OBS распакуйте в корень
+- `Streamboard.OBS-1.0.1-win-x64.zip`: для portable OBS распакуйте в корень
   portable-копии. Должен получиться файл
   `OBS\plugins\streamboard-obs\streamboard-obs.dll` и каталог `data` рядом.
   Для обычного OBS ZIP можно распаковать в `C:\ProgramData\obs-studio`.
@@ -27,7 +27,7 @@ Portable-пакет удаляется вместе с папкой `plugins\str
 предупреждение о неизвестном издателе. Сверьте загрузку с `SHA256SUMS.txt`:
 
 ```powershell
-Get-FileHash .\Streamboard.OBS-Setup-1.0.0.exe -Algorithm SHA256
+Get-FileHash .\Streamboard.OBS-Setup-1.0.1.exe -Algorithm SHA256
 ```
 
 ## Подключение
@@ -88,15 +88,17 @@ cmake --install build_x64 --config Release --prefix artifacts/package/plugins
 ```
 
 Windows CI additionally opens an isolated portable OBS, verifies that the dock
-loaded, and requests graceful shutdown. The smoke script refuses to run outside
-GitHub Actions. Automated tests use mock HTTP and credential storage. They do not
+loaded, and requests graceful shutdown. It also installs, retries with a locked DLL,
+and uninstalls in a temporary directory while an unrelated process named obs.exe runs.
+Both smoke scripts refuse to run outside GitHub Actions.
+Automated tests use mock HTTP and credential storage. They do not
 need a Streamboard account or live streams.
 
 Manual Windows 11 checks with real Twitch/VK streams, installer/uninstaller and
 in-game overlays are **deferred**. CI does not establish real live-stream behavior
 on an end-user Windows 11 machine. See [manual checklist](docs/MANUAL_TESTS.md).
 
-Tag `v1.0.0` runs the complete pipeline and creates a draft release containing
+Tag `v<version>` runs the complete pipeline and creates a draft release containing
 installer, ZIP, SHA256 checksums and SPDX SBOM. Publish the draft after reviewing
 the CI and release asset checksums. Signing hooks are disabled unless the
 `WINDOWS_SIGNING_ENABLED` repository variable and signing secrets are configured.

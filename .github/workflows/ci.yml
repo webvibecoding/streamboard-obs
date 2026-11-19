@@ -59,6 +59,8 @@ jobs:
           if (!(Test-Path -LiteralPath $iscc)) { throw 'Inno Setup 6 not found' }
           & $iscc "/DAppVersion=$version" installer/Streamboard.OBS.iss
           if ($LASTEXITCODE) { throw 'Installer build failed' }
+      - name: Installer install, actual file lock and uninstall smoke
+        run: ./tools/Test-InstallerSmoke.ps1
       - name: Installer signing hook
         if: vars.WINDOWS_SIGNING_ENABLED == 'true' && github.ref_type == 'tag'
         env:
@@ -105,6 +107,13 @@ jobs:
         with:
           name: test-diagnostics
           path: build_x64/Testing/Temporary
+          if-no-files-found: ignore
+      - name: Upload installer logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installer-smoke-logs
+          path: artifacts/installer-logs
           if-no-files-found: ignore
       - name: Cache completed SDK even if a later plugin check failed
         if: always() && steps.sdkcache.outputs.cache-hit != 'true' && hashFiles('.deps/sdk/.streamboard-sdk-33.0.1') != ''
