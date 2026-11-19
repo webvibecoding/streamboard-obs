@@ -8,6 +8,7 @@
 #include <QRandomGenerator>
 #include <QRegularExpression>
 #include <QTimer>
+#include <QSslSocket>
 
 namespace sb {
 QString safeError(int status, const QJsonObject &body) {
@@ -17,7 +18,28 @@ QString safeError(int status, const QJsonObject &body) {
     return allowed.match(code).hasMatch() ? code : QString("http_%1").arg(status);
 }
 NetworkTransport::NetworkTransport(QObject *parent) : Transport(parent),network(this) {}
+QString networkErrorCode(QNetworkReply::NetworkError error) {
+    switch(error) {
+    case QNetworkReply::HostNotFoundError: return "network_dns_error";
+    case QNetworkReply::ConnectionRefusedError: return "network_connection_refused";
+    case QNetworkReply::TimeoutError:
+    case QNetworkReply::OperationCanceledError: return "network_timeout";
+    case QNetworkReply::SslHandshakeFailedError: return "network_tls_error";
+    case QNetworkReply::ProxyConnectionRefusedError:
+    case QNetworkReply::ProxyConnectionClosedError:
+    case QNetworkReply::ProxyNotFoundError:
+    case QNetworkReply::ProxyTimeoutError:
+    case QNetworkReply::ProxyAuthenticationRequiredError:
+    case QNetworkReply::UnknownProxyError: return "network_proxy_error";
+    default: return "network_error";
+    }
+}
 void NetworkTransport::send(const QByteArray &method,const QUrl &url,const Headers &headers,const QJsonObject &body,Reply done) {
+    if(url.scheme() == "https" && !QSslSocket::supportsSsl()) {
+        qWarning("[Streamboard OBS] transport failure: network_tls_unavailable");
+        QTimer::singleShot(0,this,[done = std::move(done)]() mutable { done({0,{},"network_tls_unavailable"}); });
+        return;
+    }
     QNetworkRequest request(url);
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,QNetworkRequest::ManualRedirectPolicy);
     request.setAttribute(QNetworkRequest::CookieLoadControlAttribute,QNetworkRequest::Manual);
@@ -42,9 +64,10 @@ void NetworkTransport::send(const QByteArray &method,const QUrl &url,const Heade
         if(!numeric && !retry.isEmpty()) result.retryAfter = int(QDateTime::currentDateTimeUtc().secsTo(QDateTime::fromString(QString::fromLatin1(retry),Qt::RFC2822Date)));
         result.retryAfter = qBound(0,result.retryAfter,3600);
         if(data.size() > 2*1024*1024) result.error = "response_too_large";
-        else if(!result.status) result.error = "network_error";
+        else if(!result.status || (result.status >= 200 && result.status < 300 && reply->error() != QNetworkReply::NoError)) result.error = networkErrorCode(reply->error());
         else if(result.status < 200 || result.status >= 300) result.error = safeError(result.status,result.body);
         else if(result.status != 204 && (parse.error != QJsonParseError::NoError || !document.isObject())) result.error = "invalid_server_response";
+        if(result.error.startsWith("network_")) qWarning("[Streamboard OBS] transport failure: %s (Qt code %d)",qPrintable(result.error),int(reply->error()));
         reply->deleteLater(); done(std::move(result));
     });
 }

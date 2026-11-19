@@ -89,6 +89,7 @@ Dock::Dock(QString directory,QWidget *parent) : QWidget(parent),settings(QDir(di
         static const QHash<QString,const char *> labels{{"paused","Paused"},{"searching","Searching"},{"not_connected","ConnectRequired"},
             {"needs_name","NameRequired"},{"tracking","Tracking"},{"debouncing","Debouncing"}};
         status->setText(labels.contains(state) ? text(labels.value(state)) : errorText(state));
+        if(state.startsWith("network_")) status->setText(errorText(state) + " " + text("RetryAutomatically"));
         editButton->setEnabled(api->connected() && tracker->currentGame().has_value());
     });
     connect(tracker.get(),&Tracker::resultsChanged,this,[this](const QJsonArray &items) {
@@ -143,6 +144,11 @@ bool Dock::nativeEventFilter(const QByteArray &,void *message,qintptr *) {
 }
 void Dock::streamStarted() { if(tracker) tracker->accelerate(); }
 bool Dock::smokeCheck() const { return !windowIcon().isNull() && tabs && tabs->count() == 2 && mappings && mappings->columnCount() == 3 && results && results->rowCount() == 2 && api && !api->connected(); }
+void Dock::smokeHttps(Reply done) {
+    // Unauthenticated read only: proves packaged TLS works inside the real OBS host.
+    transport.send("GET",Api::productionUrl().resolved(QUrl("bootstrap")),
+        {{"User-Agent","Streamboard-OBS-CI/" STREAMBOARD_VERSION}},{},std::move(done));
+}
 void Dock::updateConnection(bool connected) {
     ++sessionRevision;
     connectButton->setEnabled(!connected && !api->isPairing()); disconnectButton->setEnabled(connected || api->isPairing());

@@ -3,6 +3,7 @@
 #include <QDateTime>
 #include <QJsonObject>
 #include <QNetworkAccessManager>
+#include <QNetworkReply>
 #include <QObject>
 #include <QQueue>
 #include <QUrl>
@@ -18,6 +19,7 @@ struct Response {
     bool ok() const { return status >= 200 && status < 300 && error.isEmpty(); }
 };
 QString safeError(int status, const QJsonObject &body);
+QString networkErrorCode(QNetworkReply::NetworkError error);
 using Reply = std::function<void(Response)>;
 using Headers = QHash<QByteArray,QByteArray>;
 class Transport : public QObject {

@@ -3,6 +3,8 @@
 #include <obs-frontend-api.h>
 #include <QPointer>
 #include <QTimer>
+#include <QCoreApplication>
+#include <QDir>
 #include "dock.h"
 #include "version.h"
 
@@ -33,6 +35,10 @@ bool obs_module_load(void) {
     return true;
 }
 void obs_module_post_load(void) {
+    // OBS supplies QtNetwork but may omit its TLS plugins. Register our private
+    // matching Schannel backend without copying libraries into the OBS install.
+    const auto tlsRoot = QDir(QString::fromUtf8(obs_get_module_data_path(obs_current_module()))).filePath("qt-plugins");
+    QCoreApplication::addLibraryPath(tlsRoot);
     char *path = obs_module_config_path("");
     auto *widget = new sb::Dock(QString::fromUtf8(path)); bfree(path);
     if(!obs_frontend_add_dock_by_id("streamboard-obs","Streamboard",widget)) {
@@ -44,6 +50,10 @@ void obs_module_post_load(void) {
     if(qEnvironmentVariableIsSet("STREAMBOARD_OBS_CI_SMOKE")) {
         QTimer::singleShot(1000,widget,[widget] {
             blog(widget->smokeCheck() ? LOG_INFO : LOG_ERROR,"[Streamboard OBS] CI dock check %s",widget->smokeCheck() ? "passed" : "FAILED");
+            widget->smokeHttps([](sb::Response response) {
+                const bool passed = response.status == 401 && response.body.value("detail").toObject().value("code") == "desktop_bearer_token_required";
+                blog(passed ? LOG_INFO : LOG_ERROR,"[Streamboard OBS] CI HTTPS check %s (HTTP %d)",passed ? "passed" : "FAILED",response.status);
+            });
         });
     }
 }

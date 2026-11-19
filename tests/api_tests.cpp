@@ -38,6 +38,15 @@ private slots:
         QVERIFY(sb::trustedPairingUrl(QUrl("https://streamboard.sip1ay.pro/next/?desktop_pairing=ABCD")));
         for(const auto &url : {"http://streamboard.sip1ay.pro/","https://evil.example/","https://user@streamboard.sip1ay.pro/","https://streamboard.sip1ay.pro:444/"}) QVERIFY(!sb::trustedPairingUrl(QUrl(url)));
     }
+    void transportErrorsDescribeTheFailingLayer() {
+        QCOMPARE(sb::networkErrorCode(QNetworkReply::HostNotFoundError),"network_dns_error");
+        QCOMPARE(sb::networkErrorCode(QNetworkReply::SslHandshakeFailedError),"network_tls_error");
+        QCOMPARE(sb::networkErrorCode(QNetworkReply::TimeoutError),"network_timeout");
+        QCOMPARE(sb::networkErrorCode(QNetworkReply::OperationCanceledError),"network_timeout");
+        QCOMPARE(sb::networkErrorCode(QNetworkReply::ConnectionRefusedError),"network_connection_refused");
+        QCOMPARE(sb::networkErrorCode(QNetworkReply::ProxyAuthenticationRequiredError),"network_proxy_error");
+        QCOMPARE(sb::networkErrorCode(QNetworkReply::UnknownNetworkError),"network_error");
+    }
     void noCredentialDoesNotPairInBackground() {
         FakeTransport transport; MemoryStore store; sb::Api api(transport,store,"1.0.0");
         sb::Response response; api.request("GET","bootstrap",{},[&](auto r) { response = r; });

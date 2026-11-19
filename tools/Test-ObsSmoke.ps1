@@ -57,7 +57,8 @@ try {
         $process.Refresh()
         $logs = Get-ChildItem (Join-Path $settingsRoot 'logs') -Filter '*.txt' -ErrorAction SilentlyContinue
         $content = ($logs | ForEach-Object { Get-Content -LiteralPath $_.FullName -Raw }) -join "`n"
-        if ($content -match '\[Streamboard OBS\] CI dock check passed') { $passed = $true; break }
+        if ($content -match '\[Streamboard OBS\] CI HTTPS check FAILED') { throw 'Packaged HTTPS transport failed inside OBS' }
+        if ($content -match '\[Streamboard OBS\] CI dock check passed' -and $content -match '\[Streamboard OBS\] CI HTTPS check passed') { $passed = $true; break }
         if ($process.HasExited) { throw "OBS exited before dock check: $($process.ExitCode)" }
     } while ([DateTime]::UtcNow -lt $deadline)
     if (!$passed) { throw 'OBS dock smoke timed out' }

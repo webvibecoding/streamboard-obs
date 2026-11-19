@@ -11,15 +11,16 @@ this release. Streamboard Companion remains available as a separate application.
 
 Скачайте файлы из [GitHub Releases](https://github.com/webvibecoding/streamboard-obs/releases/latest).
 
-- `Streamboard.OBS-Setup-1.0.1.exe`: закройте OBS и запустите установщик.
+- `Streamboard.OBS-Setup-1.0.2.exe`: закройте OBS и запустите установщик.
   Стандартный каталог: `C:\ProgramData\obs-studio\plugins\streamboard-obs`.
-- `Streamboard.OBS-1.0.1-win-x64.zip`: для portable OBS распакуйте в корень
+- `Streamboard.OBS-1.0.2-win-x64.zip`: для portable OBS распакуйте в корень
   portable-копии. Должен получиться файл
   `OBS\plugins\streamboard-obs\streamboard-obs.dll` и каталог `data` рядом.
   Для обычного OBS ZIP можно распаковать в `C:\ProgramData\obs-studio`.
 
 Это пакет плагина; установленный OBS уже должен присутствовать. Qt и libobs
-берутся из OBS. При обновлении закройте OBS, замените файлы плагина и запустите
+берутся из OBS. Модуль HTTPS/TLS Schannel поставляется рядом с плагином.
+При обновлении закройте OBS, замените файлы плагина и запустите
 его снова. Удаление через «Установленные приложения» удаляет только плагин.
 Portable-пакет удаляется вместе с папкой `plugins\streamboard-obs`.
 
@@ -27,7 +28,7 @@ Portable-пакет удаляется вместе с папкой `plugins\str
 предупреждение о неизвестном издателе. Сверьте загрузку с `SHA256SUMS.txt`:
 
 ```powershell
-Get-FileHash .\Streamboard.OBS-Setup-1.0.1.exe -Algorithm SHA256
+Get-FileHash .\Streamboard.OBS-Setup-1.0.2.exe -Algorithm SHA256
 ```
 
 ## Подключение
@@ -77,7 +78,10 @@ Use Visual Studio 2026 C++ tools, Windows SDK 10.0.26100.0 and CMake 4.2+ with
 the [Visual Studio 18 generator](https://cmake.org/cmake/help/latest/generator/Visual%20Studio%2018%202026.html).
 CMake verifies pinned SHA256 hashes for official
 OBS 33.0.1 sources and obs-deps/Qt 2026-10-23, then builds the public OBS SDK.
-No additional Qt DLLs are distributed with this plugin.
+The matching Qt Schannel TLS backend is installed under the plugin's private
+`data/qt-plugins/tls` directory. Qt runtime libraries in OBS are left in place.
+See [Qt deployment guidance](https://doc.qt.io/qt-6/ssl.html#considerations-while-packaging-your-application)
+and the included Qt license/source notices.
 
 ```powershell
 cmake --preset windows-x64
@@ -88,7 +92,8 @@ cmake --install build_x64 --config Release --prefix artifacts/package/plugins
 ```
 
 Windows CI additionally opens an isolated portable OBS, verifies that the dock
-loaded, and requests graceful shutdown. It also installs, retries with a locked DLL,
+loaded, completes an unauthenticated HTTPS request to the desktop bootstrap API
+(expected HTTP 401), and requests graceful shutdown. It also installs, retries with a locked DLL,
 and uninstalls in a temporary directory while an unrelated process named obs.exe runs.
 Both smoke scripts refuse to run outside GitHub Actions.
 Automated tests use mock HTTP and credential storage. They do not

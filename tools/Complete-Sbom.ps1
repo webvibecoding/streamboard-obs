@@ -17,13 +17,26 @@ $qtVersion = $Matches[1]
 $packages = @(
     @{SPDXID='SPDXRef-libobs'; name='libobs'; versionInfo=$obsVersion; licenseDeclared='GPL-2.0-or-later'; downloadLocation="https://github.com/obsproject/obs-studio/releases/tag/$obsVersion"},
     @{SPDXID='SPDXRef-obs-frontend-api'; name='obs-frontend-api'; versionInfo=$obsVersion; licenseDeclared='GPL-2.0-or-later'; downloadLocation="https://github.com/obsproject/obs-studio/releases/tag/$obsVersion"},
-    @{SPDXID='SPDXRef-QtBase'; name='Qt Base (Core, Widgets, Network, Concurrent)'; versionInfo=$qtVersion; licenseDeclared='NOASSERTION'; downloadLocation="https://download.qt.io/official_releases/qt/$($qtVersion -replace '\.\d+$','')/$qtVersion/submodules/"}
+    @{SPDXID='SPDXRef-QtBase'; name='Qt Base (Core, Widgets, Network, Concurrent)'; versionInfo=$qtVersion; licenseDeclared='NOASSERTION'; downloadLocation="https://download.qt.io/official_releases/qt/$($qtVersion -replace '\.\d+$','')/$qtVersion/submodules/"},
+    @{SPDXID='SPDXRef-QtSchannel'; name='Qt Schannel TLS backend'; versionInfo=$qtVersion; licenseDeclared='LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only'; downloadLocation="https://github.com/obsproject/obs-deps/releases/tag/$($spec.dependencies.qt6.version)"}
 )
 foreach ($package in $packages) {
     $package.filesAnalyzed = $false
     $package.licenseConcluded = 'NOASSERTION'
     $package.copyrightText = 'NOASSERTION'
-    $package.description = 'External runtime dependency supplied by the OBS installation, not bundled in this plugin package. Qt binaries used to build this plugin are pinned in buildspec.json.'
+    $package.description = 'External runtime dependency supplied by the OBS installation. Build versions and hashes are pinned in buildspec.json.'
+    if ($package.SPDXID -eq 'SPDXRef-QtSchannel') {
+        $tlsFile = @($document.files | Where-Object { $_.fileName.Replace('\','/').EndsWith('/qt-plugins/tls/qschannelbackend.dll') })
+        if ($tlsFile.Count -ne 1) { throw 'Bundled Schannel backend missing from file inventory' }
+        $fileHash = (Get-FileHash -LiteralPath 'artifacts/package/plugins/streamboard-obs/data/qt-plugins/tls/qschannelbackend.dll' -Algorithm SHA1).Hash.ToLowerInvariant()
+        $verification = [Convert]::ToHexString([Security.Cryptography.SHA1]::HashData([Text.Encoding]::UTF8.GetBytes($fileHash))).ToLowerInvariant()
+        $package.filesAnalyzed = $true
+        $package.packageVerificationCode = @{packageVerificationCodeValue=$verification}
+        $package.licenseInfoFromFiles = @($package.licenseDeclared)
+        $package.description = 'Bundled unmodified Qt Schannel backend, loaded from the plugin private data directory. Uses the Windows native TLS and certificate store. Corresponding Qt sources and license notices are included in data/qt-tls-licenses/NOTICE.txt.'
+        $document.relationships += @{spdxElementId=$package.SPDXID; relatedSpdxElement=$tlsFile[0].SPDXID; relationshipType='CONTAINS'}
+        $document.relationships += @{spdxElementId=$package.SPDXID; relatedSpdxElement='SPDXRef-QtBase'; relationshipType='DEPENDS_ON'}
+    }
     $document.packages += $package
     $document.relationships += @{spdxElementId=$root[0].SPDXID; relatedSpdxElement=$package.SPDXID; relationshipType='DEPENDS_ON'}
 }

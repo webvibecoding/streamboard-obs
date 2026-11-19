@@ -9,6 +9,10 @@ redirects and cookie authentication are disabled for the desktop client. Pairing
 uses PKCE and only opens HTTPS URLs on that exact origin. Device access is
 scoped by the server; provider OAuth credentials are never delivered to the plugin.
 
+HTTPS uses the private, matching Qt Schannel backend and normal Windows certificate
+verification. TLS initialization, certificate/handshake, DNS, proxy and timeout errors
+are reported separately. Diagnostics log only fixed codes and numeric Qt errors.
+
 Requests have a timeout and bounded response size. Refresh rotation is serialized.
 Queued syncs revalidate the currently observed game before sending. Installing or
 updating the plugin requires OBS to be closed. Release binaries are unsigned;

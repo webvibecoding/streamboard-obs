@@ -6,7 +6,9 @@ The repository was initialized from the official OBS Plugin Template
 (https://github.com/obsproject/obs-plugintemplate), GPL-2.0-or-later. OBS public
 headers and libraries are built from the pinned official OBS Studio 33.0.1 sources
 (https://github.com/obsproject/obs-studio), GPL-2.0-or-later. OBS and Qt runtime
-libraries are supplied by the user's OBS installation, not bundled in this package.
+libraries are supplied by the user's OBS installation. The matching Qt Schannel
+TLS backend is bundled in the plugin's private data directory because OBS may
+omit it. Its notices, source links and license texts are in data/qt-tls-licenses.
 The pinned build dependency versions and hashes are recorded in buildspec.json.
 
 Game key normalization, game resolution/tracking algorithms, device API behavior,

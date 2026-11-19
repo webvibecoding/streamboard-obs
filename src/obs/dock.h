@@ -22,6 +22,7 @@ public:
     void shutdown();
     void streamStarted();
     bool smokeCheck() const;
+    void smokeHttps(Reply done);
 protected:
     bool nativeEventFilter(const QByteArray &,void *,qintptr *) override;
 private:
